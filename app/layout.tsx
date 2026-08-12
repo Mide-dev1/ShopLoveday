@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Fraunces, Inter, Space_Mono } from "next/font/google";
 import { CartProvider } from "@/lib/CartContext";
+import { AuthProvider } from "@/lib/AuthContext";
 import BottomNav from "@/components/BottomNav";
 import FloatingPetals from "@/components/FloatingPetals";
 import "./globals.css";
@@ -40,11 +41,13 @@ export default function RootLayout({
       <body
         className={`${fraunces.variable} ${inter.variable} ${mono.variable} font-body`}
       >
-        <CartProvider>
-          <FloatingPetals />
-          <div className="pb-20">{children}</div>
-          <BottomNav />
-        </CartProvider>
+        <AuthProvider>
+          <CartProvider>
+            <FloatingPetals />
+            <div className="pb-20">{children}</div>
+            <BottomNav />
+          </CartProvider>
+        </AuthProvider>
       </body>
     </html>
   );
