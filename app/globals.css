@@ -1,0 +1,30 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Respect users who've asked their OS to reduce motion — accessibility, not optional */
+@media (prefers-reduced-motion: reduce) {
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+html {
+  /* Guards against any element (even one pixel too wide) forcing a
+     horizontal scrollbar, which shrinks the visible page and causes
+     the "not taking the full width" symptom. */
+  overflow-x: hidden;
+  width: 100%;
+}
+
+body {
+  background-color: #FFFFFF;
+  color: #111111;
+  overflow-x: hidden;
+  width: 100%;
+}
