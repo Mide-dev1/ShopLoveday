@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { User } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { useAuth } from "@/lib/AuthContext";
 
@@ -175,8 +176,9 @@ function LoggedInView({
   );
 }
 
-// Shown when logged out — one form that toggles between Sign up and Log in,
-// rather than two separate pages, to keep the flow short.
+// Shown when logged out. Starts on a centered "welcome" screen (matching the
+// ISB reference) with two buttons — picking one reveals the actual form below it,
+// rather than dropping straight into a form with no context.
 function AuthForm({
   signUp,
   signIn,
@@ -188,14 +190,13 @@ function AuthForm({
   ) => Promise<{ error: string | null; needsConfirmation: boolean }>;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
 }) {
-  const [mode, setMode] = useState<"login" | "signup">("login");
+  // "landing" is the new welcome screen; "login"/"signup" reveal the form.
+  const [mode, setMode] = useState<"landing" | "login" | "signup">("landing");
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  // Set once signup succeeds but Supabase is waiting on email confirmation —
-  // swaps the form out for a "check your email" message instead.
   const [confirmationSentTo, setConfirmationSentTo] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -208,7 +209,6 @@ function AuthForm({
       setSubmitting(false);
       if (result.error) setError(result.error);
       else if (result.needsConfirmation) setConfirmationSentTo(email);
-      // if neither, Supabase auto-confirmed and onAuthStateChange will flip us to LoggedInView
     } else {
       const result = await signIn(email, password);
       setSubmitting(false);
@@ -216,10 +216,9 @@ function AuthForm({
     }
   }
 
-  // Confirmation-pending screen — replaces the form entirely once shown
   if (confirmationSentTo) {
     return (
-      <div className="max-w-sm">
+      <div className="mx-auto max-w-sm text-center">
         <h1 className="font-display text-3xl text-ink">Check your email</h1>
         <p className="mt-4 font-body text-sm text-muted">
           A confirmation link has been sent to <span className="text-ink">{confirmationSentTo}</span>.
@@ -229,14 +228,53 @@ function AuthForm({
           onClick={() => setConfirmationSentTo(null)}
           className="mt-6 font-body text-sm text-muted underline"
         >
-          Back to sign up
+          Back
         </button>
       </div>
     );
   }
 
+  // The welcome landing screen — centered avatar circle, heading, subtitle,
+  // and two buttons that reveal the login/signup form below.
+  if (mode === "landing") {
+    return (
+      <div className="mx-auto flex max-w-sm flex-col items-center py-12 text-center">
+        <div className="flex h-24 w-24 items-center justify-center rounded-full bg-line">
+          <User size={40} className="text-muted" />
+        </div>
+
+        <h1 className="mt-6 font-display text-3xl text-ink">Welcome to ShopLoveday</h1>
+        <p className="mt-3 font-body text-sm text-muted">
+          Sign in to access your account, track orders, and save your favorites
+        </p>
+
+        <div className="mt-8 flex w-full gap-3">
+          <button
+            onClick={() => setMode("login")}
+            className="flex-1 rounded-full bg-ink py-3 font-body text-sm font-medium uppercase tracking-wide text-paper transition-transform hover:scale-[1.02]"
+          >
+            Sign In
+          </button>
+          <button
+            onClick={() => setMode("signup")}
+            className="flex-1 rounded-full border border-line py-3 font-body text-sm font-medium uppercase tracking-wide text-ink transition-colors hover:bg-line"
+          >
+            Create Account
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="max-w-sm">
+    <div className="mx-auto max-w-sm">
+      <button
+        onClick={() => setMode("landing")}
+        className="mb-6 font-body text-sm text-muted underline"
+      >
+        ← Back
+      </button>
+
       <h1 className="font-display text-3xl text-ink">
         {mode === "login" ? "Welcome back" : "Create your account"}
       </h1>
