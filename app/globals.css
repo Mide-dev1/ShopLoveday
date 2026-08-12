@@ -15,17 +15,18 @@
 }
 
 html {
-  /* Guards against any element (even one pixel too wide) forcing a
-     horizontal scrollbar, which shrinks the visible page and causes
-     the "not taking the full width" symptom. */
-  overflow-x: hidden;
+  /* overflow-x: clip (not "hidden") guards against any element forcing a
+     horizontal scrollbar WITHOUT turning html into a scroll container.
+     "hidden" on both html and body was creating two nested scroll
+     containers, which is what broke the navbar's position: sticky on
+     mobile browsers — sticky needs a single, clear scrolling ancestor. */
+  overflow-x: clip;
   width: 100%;
 }
 
 body {
   background-color: #FFFFFF;
   color: #111111;
-  overflow-x: hidden;
   width: 100%;
 }
 
