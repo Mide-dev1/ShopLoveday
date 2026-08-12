@@ -28,3 +28,18 @@ body {
   overflow-x: hidden;
   width: 100%;
 }
+
+/* Hides the scrollbar track visually on elements that still need to scroll
+   (like the menu drawer if its link list ever exceeds the screen height) —
+   keeps the clean look without losing scroll functionality. */
+.no-scrollbar {
+  scrollbar-width: none;
+  /* Firefox */
+  -ms-overflow-style: none;
+  /* old Edge/IE */
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+  /* Chrome, Safari */
+}

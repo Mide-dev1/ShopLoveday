@@ -46,7 +46,7 @@ export default function MenuDrawer({ open, onClose }: MenuDrawerProps) {
                         animate={{ x: 0 }}
                         exit={{ x: "-100%" }}
                         transition={{ duration: 0.3, ease: "easeOut" }}
-                        className="fixed inset-y-0 left-0 z-50 w-72 overflow-y-auto bg-paper shadow-xl"
+                        className="fixed inset-y-0 left-0 z-50 w-72 overflow-y-auto bg-paper shadow-xl no-scrollbar"
                     >
                         <div className="border-b border-line px-6 py-6">
                             <p className="font-display text-xl text-ink">
