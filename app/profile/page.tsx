@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import { useAuth } from "@/lib/AuthContext";
@@ -8,16 +8,26 @@ import AuthForm from "@/components/profile/AuthForm";
 import OrdersTab from "@/components/profile/OrdersTab";
 import ProfileTab from "@/components/profile/ProfileTab";
 
+// Next.js requires any component that calls useSearchParams() to be
+// wrapped in a <Suspense> boundary — without it, the build fails while
+// trying to statically prerender this page (that was today's build error).
+// So the default export below is just a thin wrapper; all the actual logic
+// (including useSearchParams) lives in ProfilePageContent, rendered inside
+// <Suspense>.
 export default function ProfilePage() {
+  return (
+    <Suspense fallback={null}>
+      <ProfilePageContent />
+    </Suspense>
+  );
+}
+
+function ProfilePageContent() {
   const { user, loading, signOut, updateProfile } = useAuth();
   const [tab, setTab] = useState<"orders" | "profile">("orders");
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // If middleware redirected someone here from a protected route (e.g. they
-  // tried /checkout while logged out), send them straight back there the
-  // moment they finish logging in — instead of leaving them stranded on
-  // the profile page with no memory of where they were headed.
   useEffect(() => {
     const redirectedFrom = searchParams.get("redirectedFrom");
     if (user && redirectedFrom) router.push(redirectedFrom);
@@ -42,7 +52,6 @@ export default function ProfilePage() {
           <div className="mx-auto max-w-lg">
             <h1 className="font-display text-3xl text-ink">My account</h1>
 
-            {/* Tab switcher — two categories as requested: Orders and Profile */}
             <div className="mt-6 flex gap-2 rounded-full border border-line p-1">
               <button
                 onClick={() => setTab("orders")}
