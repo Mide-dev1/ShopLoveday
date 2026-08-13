@@ -1,13 +1,14 @@
-import { createClient } from "@supabase/supabase-js";
+"use client";
 
-// These two values come from your Supabase project settings (Project Settings > API).
-// They're read from environment variables, not hardcoded, so the same code works
-// in development and production without editing files — you just set different
-// values in your .env.local (local) and in Vercel's dashboard (production).
+import { createBrowserClient } from "@supabase/ssr";
+
+// This replaces the old createClient() from @supabase/supabase-js.
+// createBrowserClient does the same job (talks to Supabase from the
+// browser) but stores the session in cookies instead of localStorage —
+// that's the entire change needed to move auth over to cookies, since
+// every file that already imports `supabase` from here keeps working
+// with no changes on their end.
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-// The "anon" key is safe to expose in frontend code (hence NEXT_PUBLIC_ prefix) —
-// Supabase enforces real security separately via Row Level Security policies
-// on the database side, not by hiding this key.
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey);

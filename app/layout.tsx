@@ -4,6 +4,7 @@ import { CartProvider } from "@/lib/CartContext";
 import { AuthProvider } from "@/lib/AuthContext";
 import BottomNav from "@/components/BottomNav";
 import FloatingPetals from "@/components/FloatingPetals";
+import CookieConsent from "@/components/CookieConsent";
 import "./globals.css";
 
 // next/font downloads and self-hosts these fonts at build time —
@@ -46,6 +47,7 @@ export default function RootLayout({
             <FloatingPetals />
             <div className="pb-20">{children}</div>
             <BottomNav />
+            <CookieConsent />
           </CartProvider>
         </AuthProvider>
       </body>

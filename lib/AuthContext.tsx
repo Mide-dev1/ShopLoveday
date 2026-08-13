@@ -4,17 +4,24 @@ import { createContext, useContext, useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "./supabase";
 
+type SignUpFields = {
+    email: string;
+    password: string;
+    fullName: string;
+    username: string;
+    phone: string;
+};
+
 type AuthContextType = {
     user: User | null;
     loading: boolean; // true while we're still checking if a session exists
-    signUp: (
-        email: string,
-        password: string,
-        fullName: string
-    ) => Promise<{ error: string | null; needsConfirmation: boolean }>;
+    signUp: (fields: SignUpFields) => Promise<{ error: string | null }>;
+    verifySignupCode: (email: string, code: string) => Promise<{ error: string | null }>;
+    resendSignupCode: (email: string) => Promise<{ error: string | null }>;
     signIn: (email: string, password: string) => Promise<{ error: string | null }>;
     signOut: () => Promise<void>;
-    updateProfile: (data: { full_name?: string; phone?: string }) => Promise<{ error: string | null }>;
+    updateProfile: (data: { full_name?: string; phone?: string; username?: string }) => Promise<{ error: string | null }>;
+    changePassword: (email: string, oldPassword: string, newPassword: string) => Promise<{ error: string | null }>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -24,43 +31,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // On load, ask Supabase if there's already a valid session
-        // (e.g. the person logged in yesterday and closed the tab).
         supabase.auth.getSession().then(({ data }) => {
             setUser(data.session?.user ?? null);
             setLoading(false);
         });
 
-        // Subscribe to auth changes — this fires automatically whenever
-        // someone logs in, logs out, or their session refreshes, so `user`
-        // always reflects the current truth without us polling manually.
         const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
             setUser(session?.user ?? null);
         });
 
-        // Cleanup: stop listening when this provider unmounts (e.g. hot reload in dev).
         return () => listener.subscription.unsubscribe();
     }, []);
 
-    async function signUp(email: string, password: string, fullName: string) {
-        const { data, error } = await supabase.auth.signUp({
+    // Creates the account but does NOT log the person in yet — Supabase sends
+    // a 6-digit code to their email (once the email template is switched to
+    // show {{ .Token }} instead of a link — see the setup instructions).
+    // The account only becomes active after verifySignupCode succeeds below.
+    async function signUp({ email, password, fullName, username, phone }: SignUpFields) {
+        const { error } = await supabase.auth.signUp({
             email,
             password,
             options: {
-                data: { full_name: fullName }, // stored on the user record
-                // window.location.origin is whatever domain the person is actually
-                // on right now — localhost while you're testing, your real Vercel
-                // domain once deployed. This is what was defaulting to localhost
-                // before: without setting this explicitly, Supabase falls back to
-                // whatever "Site URL" is configured in its dashboard.
-                emailRedirectTo: `${window.location.origin}/profile`,
+                // This metadata is what the database trigger (handle_new_user in
+                // schema.sql) reads to populate the profiles table automatically.
+                data: { full_name: fullName, username, phone },
             },
         });
-        // If email confirmation is required, Supabase creates the user but does
-        // NOT return a session yet — that's how we know to show "check your email"
-        // instead of treating the signup as instantly complete.
-        const needsConfirmation = !error && !data.session;
-        return { error: error?.message ?? null, needsConfirmation };
+        return { error: error?.message ?? null };
+    }
+
+    // Verifies the 6-digit code the person typed against what Supabase sent.
+    // On success this ALSO logs them in immediately — no separate login step.
+    async function verifySignupCode(email: string, code: string) {
+        const { error } = await supabase.auth.verifyOtp({
+            email,
+            token: code,
+            type: "signup",
+        });
+        return { error: error?.message ?? null };
+    }
+
+    // Triggers Supabase to send a fresh code — used by the "Resend code" link
+    // if the first email is slow, lost, or the code expired.
+    async function resendSignupCode(email: string) {
+        const { error } = await supabase.auth.resend({ type: "signup", email });
+        return { error: error?.message ?? null };
     }
 
     async function signIn(email: string, password: string) {
@@ -72,16 +87,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await supabase.auth.signOut();
     }
 
-    // Updates fields stored in the user's metadata (name, phone) — separate
-    // from email/password, which Supabase handles through different methods
-    // that involve re-verification.
-    async function updateProfile(data: { full_name?: string; phone?: string }) {
+    // Updates auth metadata (kept in sync with the `profiles` table separately
+    // — see updateProfile usage in the dashboard, which also writes to `profiles`).
+    async function updateProfile(data: { full_name?: string; phone?: string; username?: string }) {
         const { error } = await supabase.auth.updateUser({ data });
         return { error: error?.message ?? null };
     }
 
+    // Supabase's updateUser() will happily change the password without ever
+    // checking the old one — it trusts that if you have a valid session,
+    // that's enough. To actually REQUIRE the old password (as requested),
+    // we manually verify it first by attempting a real sign-in with it.
+    // If that fails, the old password was wrong and we stop there.
+    async function changePassword(email: string, oldPassword: string, newPassword: string) {
+        const { error: verifyError } = await supabase.auth.signInWithPassword({
+            email,
+            password: oldPassword,
+        });
+        if (verifyError) return { error: "Current password is incorrect." };
+
+        const { error } = await supabase.auth.updateUser({ password: newPassword });
+        return { error: error?.message ?? null };
+    }
+
     return (
-        <AuthContext.Provider value={{ user, loading, signUp, signIn, signOut, updateProfile }}>
+        <AuthContext.Provider
+            value={{
+                user,
+                loading,
+                signUp,
+                verifySignupCode,
+                resendSignupCode,
+                signIn,
+                signOut,
+                updateProfile,
+                changePassword,
+            }}
+        >
             {children}
         </AuthContext.Provider>
     );
